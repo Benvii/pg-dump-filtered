@@ -27,7 +27,8 @@ Arguments:
                              Eg : 'table1,table2,table3'
 
 Options:
-    -h --help                  Show this screen
+    -h --help                  Show this screen.
+    --filters=<SQL>            SQL filters. Eg: mytable.mycol = 'value' AND myothertable.toto LIKE 'titi'
     --debug                    Set logs to debug.
 """
 
@@ -59,6 +60,7 @@ def main():
     # Handling arguments
     db_uri_parsed = urlparse(args["<db-uri>"])
     tables_to_export = args["<table-list>"].split(",")
+    sql_filters = args["--filters"]
 
     # database connexion
     db_conn = psycopg2.connect(
@@ -81,7 +83,11 @@ def main():
 
     for tname in tables_to_request:
         logger.debug("#### Request for %r ####", tname)
-        req = request_builder.generate_select_statement(from_table_name=from_table_name, displayed_fields_table_name=tname, join_statements=join_req)
+        req = request_builder.generate_select_statement(
+            from_table_name=from_table_name,
+            displayed_fields_table_name=tname,
+            join_statements=join_req,
+            where_filter=sql_filters)
         logger.debug(req)
 
         # filters TODO

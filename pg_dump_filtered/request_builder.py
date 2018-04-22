@@ -76,12 +76,15 @@ class RequestBuilder():
 
         return join_req
 
-    def generate_select_statement(self, from_table_name: str, displayed_fields_table_name: str, join_statements: str) -> str:
+    def generate_select_statement(self, from_table_name: str, displayed_fields_table_name: str, join_statements: str, where_filter: str="") -> str:
         """
         Generate a select statement.
         """
-        req = """SELECT {displayed_fields_table_name}.* FROM {from_table_name} {join_statements} WHERE campaign.id_campaign='84' """.format(
+        where = "" if where_filter == "" or where_filter is None else " WHERE " + where_filter
+
+        req = """SELECT {displayed_fields_table_name}.* FROM {from_table_name} {join_statements} {where} """.format(
             displayed_fields_table_name=displayed_fields_table_name,
             from_table_name=from_table_name,
-            join_statements=join_statements)
+            join_statements=join_statements,
+            where=where)
         return req

@@ -17,7 +17,7 @@
 # Description: Utils function to generate SQL request.
 
 import logging
-from typing import List
+from typing import List, Dict
 from pg_dump_filtered import SchemaUtils
 
 class RequestBuilder():
@@ -88,3 +88,33 @@ class RequestBuilder():
             join_statements=join_statements,
             where=where)
         return req
+
+    def generate_all_select_statements(self, table_to_be_exported: List[str], from_table_name: str, join_statements: str, where_filter: str="") -> Dict[str, str]:
+        """
+        Generate all select statements.
+
+        :param table_to_be_exported: Tables that will be exported.
+        :param from_table_name: Table used in the FROM statement, should not be mentionned in the JOIN statements.
+        :param where_filter: SQL filters.
+        :return: Dictionnary of select statement for each table (table_name => select statement)
+        """
+        self.logger.debug("Generating all select statements for tables : %r, FROM table is: %r", table_to_be_exported, from_table_name)
+        self.logger.debug("Used filters : %s", where_filter)
+        select_requests = {}
+        for tname in table_to_be_exported:
+            self.logger.debug("#### Request for %r ####", tname)
+            req = self.generate_select_statement(
+                from_table_name=from_table_name,
+                displayed_fields_table_name=tname,
+                join_statements=join_statements,
+                where_filter=where_filter)
+            select_requests[tname] = req
+            self.logger.debug(req)
+
+        return select_requests
+
+    def generate_primary_keys_delete_statements(self, from_table_name: str, displayed_fields_table_name: str, join_statements: str, where_filter: str=""):
+        """
+        Will generate a delete statement for all selected datas.
+        """
+        pass

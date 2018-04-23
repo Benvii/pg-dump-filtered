@@ -29,6 +29,7 @@ Arguments:
 Options:
     -h --help                  Show this screen.
     --filters=<SQL>            SQL filters. Eg: mytable.mycol = 'value' AND myothertable.toto LIKE 'titi'
+    --ignored-constraints=<str>      List of constraints to be ignored. Eg : "myconstraint,myotherconstraint"
     --debug                    Set logs to debug.
 """
 
@@ -37,7 +38,7 @@ import psycopg2
 from docopt import docopt
 from urllib.parse import urlparse
 
-from pg_dump_filtered import SchemaUtils, RequestBuilder, model
+from pg_dump_filtered import SchemaUtils, RequestBuilder, DumpBuilder, model
 
 MODULE_NAME = 'pg-dump-filtered'
 
@@ -61,6 +62,7 @@ def main():
     db_uri_parsed = urlparse(args["<db-uri>"])
     tables_to_export = args["<table-list>"].split(",")
     sql_filters = args["--filters"]
+    ignored_constraints = args["--ignored-constraints"].split(",") if args["--ignored-constraints"] is not None else []
 
     # database connexion
     db_conn = psycopg2.connect(
@@ -70,9 +72,12 @@ def main():
         host=db_uri_parsed.hostname)
 
     # getting related tables informations for schema
-    schema_utils = SchemaUtils(conn=db_conn)
+    schema_utils = SchemaUtils(conn=db_conn, ignored_constraints=ignored_constraints)
     request_builder = RequestBuilder(schema_utils=schema_utils)
     tables_to_request = schema_utils.list_all_related_tables(table_names=tables_to_export)
+
+    logger.debug("Table to request : %r", tables_to_request)
+    input()
 
     from_table_name = tables_to_export[0]  # Table that will be used in the FROM statment
 
@@ -81,16 +86,19 @@ def main():
     logger.debug("#### JOIN REQUEST FOR ALL TABLES ####")
     logger.debug(join_req)
 
-    for tname in tables_to_request:
-        logger.debug("#### Request for %r ####", tname)
-        req = request_builder.generate_select_statement(
-            from_table_name=from_table_name,
-            displayed_fields_table_name=tname,
-            join_statements=join_req,
-            where_filter=sql_filters)
-        logger.debug(req)
+    # generating select statements
+    selects = request_builder.generate_all_select_statements(table_to_be_exported=tables_to_request, from_table_name=from_table_name, join_statements=join_req, where_filter=sql_filters)
+    delete_p_kleys = # TODO
 
-        # filters TODO
+    logger.debug("--------------------------------------------")
+    logger.debug(selects['lot'])
+    input()
+
+    # Starting copies to ouput file
+    with open('/tmp/dump.sql', 'w') as dump_file:
+        dump_builder = DumpBuilder(schema_utils=schema_utils, conn=db_conn, dump_file=dump_file)
+
+        dump_builder.dump(table_name="lot", select_request=selects['lot'])
 
     # schema_utils.fetch_foreign_keys(table_name="lot")
     # schema_utils.fetch_foreign_keys(table_name="lot")

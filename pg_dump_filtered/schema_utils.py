@@ -52,22 +52,26 @@ REQ_IS_NULLABLE = """
     WHERE table_name = '{table_name}' AND column_name = '{column_name}';
 """
 
+REQ_FETCH_COLULMNS = """
+    SELECT COLUMN_NAME FROM information_schema.columns WHERE table_name = '{table_name}' ORDER BY ORDINAL_POSITION;
+"""
+
 class SchemaUtils():
     """
     Helps you extract informations from information_schema database.
     """
 
-    def __init__(self, conn: psycopg2.extensions.connection):
+    def __init__(self, conn: psycopg2.extensions.connection, ignored_constraints: List[str]=[]):
         """
         Intanciate a SchemaUtils class.
 
         :param conn: The psycog connexion.
         """
-        print(__name__)
         self.logger = logging.getLogger(__name__)
 
         self.logger.debug("Instanciating utils with conn : %r", conn)
         self.conn = conn
+        self._ignored_constraints = ignored_constraints
         self._fk_cache = {}  # cache of foreign keys "tablename": Dict[str, model.ForeignKey]
         self._is_nullable_cache = {}  # cache of is_nullable request, "table_name.columname" -> bool
 
@@ -110,6 +114,9 @@ class SchemaUtils():
 
         for row in cur:
             fk = self._map_foreign_key_to_model(row)
+
+            if fk.constraint_name in self._ignored_constraints:
+                continue
 
             if fk.constraint_name in constraints:  # if constraint with this name already exists (for grouped keys)
                 constraints[fk.constraint_name].matching_columns.extend(fk.matching_columns)
@@ -172,3 +179,23 @@ class SchemaUtils():
             nullable = row['is_nullable'] == "YES"
             self._is_nullable_cache[key] = nullable
             return nullable
+
+    def fetch_cols_names(self, table_name: str) -> List[model.ColumnRef]:
+        """
+        Gets table columns in ORDINAL_POSITION order.
+
+        :param table_name: Table where columns names will be extracted.
+        :return: The list of columnsRef.
+        """
+        self.logger.debug("fetch_cols_names for table %r", table_name)
+        cols = []
+
+        cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(REQ_FETCH_COLULMNS.format(table_name=table_name))
+
+        for row in cur:
+            if "column_name" in row:
+                cols.append(model.ColumnRef(table_name=table_name, column_name=row["column_name"]))
+
+        self.logger.debug("Found cols : %r", cols)
+        return cols

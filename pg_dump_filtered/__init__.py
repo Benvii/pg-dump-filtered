@@ -14,3 +14,4 @@
 
 from pg_dump_filtered.schema_utils import SchemaUtils
 from pg_dump_filtered.request_builder import RequestBuilder
+from pg_dump_filtered.dump_builder import DumpBuilder

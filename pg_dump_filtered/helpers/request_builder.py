@@ -18,7 +18,7 @@
 
 import logging
 from typing import List, Dict
-from pg_dump_filtered import SchemaUtils
+from pg_dump_filtered.helpers import SchemaUtils
 
 class RequestBuilder():
 
@@ -112,9 +112,3 @@ class RequestBuilder():
             self.logger.debug(req)
 
         return select_requests
-
-    def generate_primary_keys_delete_statements(self, from_table_name: str, displayed_fields_table_name: str, join_statements: str, where_filter: str=""):
-        """
-        Will generate a delete statement for all selected datas.
-        """
-        pass

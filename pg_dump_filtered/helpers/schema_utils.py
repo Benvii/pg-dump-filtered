@@ -56,6 +56,18 @@ REQ_FETCH_COLULMNS = """
     SELECT COLUMN_NAME FROM information_schema.columns WHERE table_name = '{table_name}' ORDER BY ORDINAL_POSITION;
 """
 
+REQ_FETCH_TABLE_PRIMARY_KEYS = """
+SELECT kc.column_name
+FROM
+    information_schema.table_constraints tc,
+    information_schema.key_column_usage kc
+WHERE
+    tc.constraint_type = 'PRIMARY KEY'
+    and kc.table_name = tc.table_name and kc.table_schema = tc.table_schema
+    and kc.constraint_name = tc.constraint_name
+    and kc.table_name = '{table_name}';
+"""
+
 class SchemaUtils():
     """
     Helps you extract informations from information_schema database.
@@ -127,6 +139,26 @@ class SchemaUtils():
         self._fk_cache[table_name] = constraints
 
         return constraints
+
+    def fetch_primary_keys(self, table_name: str) -> List[model.ColumnRef]:
+        """
+        Fetch table primary keys.
+
+        :param table_name: Primary keys of this table will be extracted.
+        :return: List of column that are primary keys.
+        """
+        self.logger.debug("Fetching primary keys for : %s", table_name)
+        keys = []
+
+        cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute(REQ_FETCH_TABLE_PRIMARY_KEYS.format(table_name=table_name))
+
+        for row in cur:
+            if "column_name" in row:
+                keys.append(model.ColumnRef(table_name=table_name, column_name=row["column_name"]))
+
+        self.logger.debug("Found theses primary keys : %r", keys)
+        return keys
 
     def list_all_related_tables(self, table_names: List[str]) -> List[str]:
         """

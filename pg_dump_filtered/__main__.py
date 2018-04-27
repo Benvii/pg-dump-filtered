@@ -30,15 +30,15 @@ Options:
     -h --help                  Show this screen.
     --filters=<SQL>            SQL filters. Eg: mytable.mycol = 'value' AND myothertable.toto LIKE 'titi'
     --ignored-constraints=<str>      List of constraints to be ignored. Eg : "myconstraint,myotherconstraint"
+    --output=<str>             Dump file path. [default: dump.sql]
     --debug                    Set logs to debug.
 """
 
 import logging
-import psycopg2
 from docopt import docopt
-from urllib.parse import urlparse
+from path import Path
 
-from pg_dump_filtered import SchemaUtils, RequestBuilder, DumpBuilder, model
+from pg_dump_filtered import PgDumpFiltered
 
 MODULE_NAME = 'pg-dump-filtered'
 
@@ -59,51 +59,20 @@ def main():
     logger.debug("DEBUG")
 
     # Handling arguments
-    db_uri_parsed = urlparse(args["<db-uri>"])
+    db_uri_parsed = args["<db-uri>"]
     tables_to_export = args["<table-list>"].split(",")
     sql_filters = args["--filters"]
     ignored_constraints = args["--ignored-constraints"].split(",") if args["--ignored-constraints"] is not None else []
+    ouput_file = Path(args["--output"])
 
-    # database connexion
-    db_conn = psycopg2.connect(
-        database=db_uri_parsed.path[1:],
-        user=db_uri_parsed.username,
-        password=db_uri_parsed.password,
-        host=db_uri_parsed.hostname)
+    dump_service = PgDumpFiltered(
+        db_uri=db_uri_parsed,
+        ignored_constraints=ignored_constraints,
+        sql_filters=sql_filters,
+        dump_file_path=ouput_file)
+    dump_service.dump(tables_to_export=tables_to_export)
 
-    # getting related tables informations for schema
-    schema_utils = SchemaUtils(conn=db_conn, ignored_constraints=ignored_constraints)
-    request_builder = RequestBuilder(schema_utils=schema_utils)
-    tables_to_request = schema_utils.list_all_related_tables(table_names=tables_to_export)
-
-    logger.debug("Table to request : %r", tables_to_request)
-    input()
-
-    from_table_name = tables_to_export[0]  # Table that will be used in the FROM statment
-
-    # Generating all JOINs, they aren't selective as it would be too difficult to draw a graph of the relations to determine if JOIN is needed or not
-    join_req = request_builder.generate_join_statments(table_names=tables_to_request, exclude_from_statment=[from_table_name])
-    logger.debug("#### JOIN REQUEST FOR ALL TABLES ####")
-    logger.debug(join_req)
-
-    # generating select statements
-    selects = request_builder.generate_all_select_statements(table_to_be_exported=tables_to_request, from_table_name=from_table_name, join_statements=join_req, where_filter=sql_filters)
-    delete_p_kleys = # TODO
-
-    logger.debug("--------------------------------------------")
-    logger.debug(selects['lot'])
-    input()
-
-    # Starting copies to ouput file
-    with open('/tmp/dump.sql', 'w') as dump_file:
-        dump_builder = DumpBuilder(schema_utils=schema_utils, conn=db_conn, dump_file=dump_file)
-
-        dump_builder.dump(table_name="lot", select_request=selects['lot'])
-
-    # schema_utils.fetch_foreign_keys(table_name="lot")
-    # schema_utils.fetch_foreign_keys(table_name="lot")
-
-    db_conn.close()
+    dump_service.close()
 
 if __name__ == "__main__":
     main()

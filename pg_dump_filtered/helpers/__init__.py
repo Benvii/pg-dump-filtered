@@ -12,4 +12,6 @@
 # You should have received a copy of the GNU General Public License along
 # with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from pg_dump_filtered.pg_dump_filtered import PgDumpFiltered
+from pg_dump_filtered.helpers.schema_utils import SchemaUtils
+from pg_dump_filtered.helpers.request_builder import RequestBuilder
+from pg_dump_filtered.helpers.dump_builder import DumpBuilder

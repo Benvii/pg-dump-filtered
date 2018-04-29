@@ -19,7 +19,7 @@
 import logging
 import psycopg2
 from urllib.parse import urlparse
-from typing import List
+from typing import List, Tuple
 
 from pg_dump_filtered.helpers import SchemaUtils, RequestBuilder, DumpBuilder
 
@@ -145,11 +145,12 @@ class PgDumpFiltered():
         """
         self._request_builder = request_builder
 
-    def dump(self, tables_to_export: List[str]):
+    def generate_tables_to_request_and_join(self, tables_to_export: List[str]) -> Tuple[List[str], str]:
         """
-        Dump some tables and all related datas. Dump to the output file directly.
+        Generate a tuple with tables to request and join statement.
 
-        :param table_to_export: List of tables names that needs to be exported and all their related tables.
+        :param tables_to_export: Table names to be exported.
+        :return: A tuple (tables_to_requests, join_statement)
         """
         tables_to_request = self.schema_utils.list_all_related_tables(table_names=tables_to_export)
 
@@ -160,6 +161,19 @@ class PgDumpFiltered():
         # Generating all JOINs, they aren't selective as it would be too difficult to draw a graph of the relations to determine if JOIN is needed or not
         join_req = self.request_builder.generate_join_statments(table_names=tables_to_request, exclude_from_statment=[from_table_name])
         self.logger.debug("Join request : %s", join_req)
+
+        return (tables_to_request, join_req)
+
+    def dump(self, tables_to_export: List[str]):
+        """
+        Dump some tables and all related datas. Dump to the output file directly.
+
+        :param table_to_export: List of tables names that needs to be exported and all their related tables.
+        """
+        self.logger.debug("Dump generation from %s")
+        tables_to_request, join_req = self.generate_tables_to_request_and_join(tables_to_export=tables_to_export)
+
+        from_table_name = tables_to_export[0]  # Table that will be used in the FROM statment
 
         # generating select statements
         selects = self.request_builder.generate_all_select_statements(

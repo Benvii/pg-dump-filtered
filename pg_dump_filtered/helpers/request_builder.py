@@ -82,7 +82,7 @@ class RequestBuilder():
         """
         where = "" if where_filter == "" or where_filter is None else " WHERE " + where_filter
 
-        req = """SELECT {displayed_fields_table_name}.* FROM {from_table_name} {join_statements} {where} """.format(
+        req = """SELECT DISTINCT {displayed_fields_table_name}.* FROM {from_table_name} {join_statements} {where} """.format(
             displayed_fields_table_name=displayed_fields_table_name,
             from_table_name=from_table_name,
             join_statements=join_statements,

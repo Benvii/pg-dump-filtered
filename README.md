@@ -43,6 +43,4 @@ pg-dump-filtered "postgres://user:pwd@host/db" "tableA,tableB" --debug --filters
 
 For [Open Path View](https://openpathview.fr) whe needed to export small set a data depending on their geolocalisation and list some row of the exported datas (files UUID as files where saved in the database).
 
-```python
-TODO
-```
+You can see how to use if in the [main CLI entry point](pg_dump_filtered/__main__.py).
